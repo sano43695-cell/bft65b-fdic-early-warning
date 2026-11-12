@@ -1,0 +1,32 @@
+# Data directories and files (Strictly DO NOT commit to GitHub per exam instructions)
+data_raw/
+data_processed/
+*.parquet
+*.csv
+*.joblib
+manifest_*.json
+
+# Explicitly allow summary report tables in outputs/tables/
+!outputs/tables/*.csv
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Spark & Java artifacts
+metastore_db/
+spark-warehouse/
+derby.log
+
+# Jupyter / IDE
+.ipynb_checkpoints/
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

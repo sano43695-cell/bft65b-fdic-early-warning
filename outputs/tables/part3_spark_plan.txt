@@ -1,0 +1,186 @@
+================================================================================
+PART 3 – PYSPARK EXECUTION PLAN & NUMERICAL EQUIVALENCE VERIFICATION
+================================================================================
+
+1. AUTOMATED EQUIVALENCE CHECK (PySpark vs. Polars Lazy on 100% Dataset)
+--------------------------------------------------------------------------------
+  Spark Execution Time : 25.078 s
+  Matched Groups       : 8,260 (STNAME × REPDTE)
+  Tolerance Criterion  : Relative/Absolute Float Error < 1e-6
+
+  [PASS] total_asset            | max_abs_diff = 0.000e+00 | max_rel_diff = 0.000e+00 (< 1e-6)
+  [PASS] mean_roa               | max_abs_diff = 5.329e-15 | max_rel_diff = 1.209e-15 (< 1e-6)
+  [PASS] mean_roa_lag1          | max_abs_diff = 5.329e-15 | max_rel_diff = 1.404e-15 (< 1e-6)
+  [PASS] mean_roa_roll4         | max_abs_diff = 3.553e-15 | max_rel_diff = 1.373e-15 (< 1e-6)
+  [PASS] mean_roa_std4          | max_abs_diff = 1.110e-15 | max_rel_diff = 1.064e-15 (< 1e-6)
+  [PASS] mean_eq_ratio          | max_abs_diff = 1.665e-16 | max_rel_diff = 1.665e-16 (< 1e-6)
+  [PASS] mean_asset_growth4q    | max_abs_diff = 1.421e-14 | max_rel_diff = 7.378e-16 (< 1e-6)
+
+  OVERALL VERIFICATION STATUS: ALL ASSERTIONS PASSED ✓
+
+2. SPARK CATALYST EXPLAIN PLAN (agg_sdf.explain(extended=True))
+--------------------------------------------------------------------------------
+== Parsed Logical Plan ==
+'Sort ['STNAME ASC NULLS FIRST, 'REPDTE ASC NULLS FIRST], true
++- Aggregate [STNAME#2, REPDTE#1], [STNAME#2, REPDTE#1, count(CERT#0L) AS n_banks#282L, sum(ASSET#3) AS total_asset#284, avg(ROA#6) AS mean_roa#286, avg(roa_lag1#74) AS mean_roa_lag1#288, avg(roa_roll_mean_4q#156) AS mean_roa_roll4#290, avg(roa_roll_std_4q#185) AS mean_roa_std4#292, avg(eq_ratio#103) AS mean_eq_ratio#294, avg(asset_growth_4q#119) AS mean_asset_growth4q#296]
+   +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, nimy_roll_mean_4q#237]
+      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, _we0#238, CASE WHEN (_cnt_nimy4#215L >= cast(2 as bigint)) THEN _we0#238 ELSE cast(null as double) END AS nimy_roll_mean_4q#237]
+         +- Window [avg(NIMY#7) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#238], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L]
+               +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L]
+                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, _cnt_nimy4#215L]
+                     +- Window [count(NIMY#7) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_nimy4#215L], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                        +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185]
+                           +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185]
+                              +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, _we0#194, CASE WHEN (_cnt_roa4#137L >= cast(2 as bigint)) THEN _we0#194 ELSE cast(null as double) END AS roa_roll_std_4q#185]
+                                 +- Window [stddev_samp(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#194], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                    +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156]
+                                       +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156]
+                                          +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, _we0#157, CASE WHEN (_cnt_roa4#137L >= cast(2 as bigint)) THEN _we0#157 ELSE cast(null as double) END AS roa_roll_mean_4q#156]
+                                             +- Window [avg(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#157], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L]
+                                                   +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L]
+                                                      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, _cnt_roa4#137L]
+                                                         +- Window [count(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_roa4#137L], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119]
+                                                               +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, ((ASSET#3 - asset_lag4#61) / asset_lag4#61) AS asset_growth_4q#119]
+                                                                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, (EQ#5 / ASSET#3) AS eq_ratio#103]
+                                                                     +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88]
+                                                                        +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, roa_lag4#88]
+                                                                           +- Window [lag(ROA#6, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS roa_lag4#88], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                              +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74]
+                                                                                 +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74]
+                                                                                    +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag1#74]
+                                                                                       +- Window [lag(ROA#6, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS roa_lag1#74], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                          +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61]
+                                                                                             +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61]
+                                                                                                +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, asset_lag4#61]
+                                                                                                   +- Window [lag(ASSET#3, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS asset_lag4#61], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                                      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49]
+                                                                                                         +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49]
+                                                                                                            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag1#49]
+                                                                                                               +- Window [lag(ASSET#3, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS asset_lag1#49], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                                                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L]
+                                                                                                                     +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L]
+                                                                                                                        +- Join LeftOuter, (CERT#0L = CERT#20L)
+                                                                                                                           :- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7]
+                                                                                                                           :  +- Filter (((ASSET#3 > cast(0 as double)) AND (DEP#4 >= cast(0 as double))) AND (REPDTE#1 >= 19900331))
+                                                                                                                           :     +- Relation [CERT#0L,REPDTE#1,STNAME#2,ASSET#3,DEP#4,EQ#5,ROA#6,NIMY#7,NETINC#8,NCLNLS#9] parquet
+                                                                                                                           +- Project [CERT#20L, BKCLASS#21, ACTIVE#22L]
+                                                                                                                              +- Relation [CERT#20L,BKCLASS#21,ACTIVE#22L] parquet
+
+== Analyzed Logical Plan ==
+STNAME: string, REPDTE: string, n_banks: bigint, total_asset: double, mean_roa: double, mean_roa_lag1: double, mean_roa_roll4: double, mean_roa_std4: double, mean_eq_ratio: double, mean_asset_growth4q: double
+Sort [STNAME#2 ASC NULLS FIRST, REPDTE#1 ASC NULLS FIRST], true
++- Aggregate [STNAME#2, REPDTE#1], [STNAME#2, REPDTE#1, count(CERT#0L) AS n_banks#282L, sum(ASSET#3) AS total_asset#284, avg(ROA#6) AS mean_roa#286, avg(roa_lag1#74) AS mean_roa_lag1#288, avg(roa_roll_mean_4q#156) AS mean_roa_roll4#290, avg(roa_roll_std_4q#185) AS mean_roa_std4#292, avg(eq_ratio#103) AS mean_eq_ratio#294, avg(asset_growth_4q#119) AS mean_asset_growth4q#296]
+   +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, nimy_roll_mean_4q#237]
+      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, _we0#238, CASE WHEN (_cnt_nimy4#215L >= cast(2 as bigint)) THEN _we0#238 ELSE cast(null as double) END AS nimy_roll_mean_4q#237]
+         +- Window [avg(NIMY#7) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#238], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L]
+               +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L]
+                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185, _cnt_nimy4#215L, _cnt_nimy4#215L]
+                     +- Window [count(NIMY#7) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_nimy4#215L], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                        +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185]
+                           +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, roa_roll_std_4q#185]
+                              +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156, _we0#194, CASE WHEN (_cnt_roa4#137L >= cast(2 as bigint)) THEN _we0#194 ELSE cast(null as double) END AS roa_roll_std_4q#185]
+                                 +- Window [stddev_samp(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#194], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                    +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156]
+                                       +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, roa_roll_mean_4q#156]
+                                          +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, _we0#157, CASE WHEN (_cnt_roa4#137L >= cast(2 as bigint)) THEN _we0#157 ELSE cast(null as double) END AS roa_roll_mean_4q#156]
+                                             +- Window [avg(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#157], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L]
+                                                   +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L]
+                                                      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119, _cnt_roa4#137L, _cnt_roa4#137L]
+                                                         +- Window [count(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_roa4#137L], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, asset_growth_4q#119]
+                                                               +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, eq_ratio#103, ((ASSET#3 - asset_lag4#61) / asset_lag4#61) AS asset_growth_4q#119]
+                                                                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, (EQ#5 / ASSET#3) AS eq_ratio#103]
+                                                                     +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88]
+                                                                        +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag4#88, roa_lag4#88]
+                                                                           +- Window [lag(ROA#6, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS roa_lag4#88], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                              +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74]
+                                                                                 +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74]
+                                                                                    +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, roa_lag1#74, roa_lag1#74]
+                                                                                       +- Window [lag(ROA#6, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS roa_lag1#74], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                          +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61]
+                                                                                             +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61]
+                                                                                                +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag4#61, asset_lag4#61]
+                                                                                                   +- Window [lag(ASSET#3, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS asset_lag4#61], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                                      +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49]
+                                                                                                         +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49]
+                                                                                                            +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L, asset_lag1#49, asset_lag1#49]
+                                                                                                               +- Window [lag(ASSET#3, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS asset_lag1#49], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                                                                                                                  +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L]
+                                                                                                                     +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7, BKCLASS#21, ACTIVE#22L]
+                                                                                                                        +- Join LeftOuter, (CERT#0L = CERT#20L)
+                                                                                                                           :- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, DEP#4, EQ#5, ROA#6, NIMY#7]
+                                                                                                                           :  +- Filter (((ASSET#3 > cast(0 as double)) AND (DEP#4 >= cast(0 as double))) AND (REPDTE#1 >= 19900331))
+                                                                                                                           :     +- Relation [CERT#0L,REPDTE#1,STNAME#2,ASSET#3,DEP#4,EQ#5,ROA#6,NIMY#7,NETINC#8,NCLNLS#9] parquet
+                                                                                                                           +- Project [CERT#20L, BKCLASS#21, ACTIVE#22L]
+                                                                                                                              +- Relation [CERT#20L,BKCLASS#21,ACTIVE#22L] parquet
+
+== Optimized Logical Plan ==
+Sort [STNAME#2 ASC NULLS FIRST, REPDTE#1 ASC NULLS FIRST], true
++- Aggregate [STNAME#2, REPDTE#1], [STNAME#2, REPDTE#1, count(CERT#0L) AS n_banks#282L, sum(ASSET#3) AS total_asset#284, avg(ROA#6) AS mean_roa#286, avg(roa_lag1#74) AS mean_roa_lag1#288, avg(roa_roll_mean_4q#156) AS mean_roa_roll4#290, avg(roa_roll_std_4q#185) AS mean_roa_std4#292, avg(eq_ratio#103) AS mean_eq_ratio#294, avg(asset_growth_4q#119) AS mean_asset_growth4q#296]
+   +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, ROA#6, roa_lag1#74, (EQ#5 / ASSET#3) AS eq_ratio#103, ((ASSET#3 - asset_lag4#61) / asset_lag4#61) AS asset_growth_4q#119, CASE WHEN (_cnt_roa4#137L >= 2) THEN _we0#157 END AS roa_roll_mean_4q#156, CASE WHEN (_cnt_roa4#137L >= 2) THEN _we0#194 END AS roa_roll_std_4q#185]
+      +- Window [lag(ASSET#3, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS asset_lag4#61, lag(ROA#6, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS roa_lag1#74, count(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_roa4#137L, avg(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#157, stddev_samp(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#194], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+         +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, EQ#5, ROA#6]
+            +- Join LeftOuter, (CERT#0L = CERT#20L)
+               :- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, EQ#5, ROA#6]
+               :  +- Filter (((isnotnull(ASSET#3) AND isnotnull(DEP#4)) AND isnotnull(REPDTE#1)) AND (((ASSET#3 > 0.0) AND (DEP#4 >= 0.0)) AND (REPDTE#1 >= 19900331)))
+               :     +- Relation [CERT#0L,REPDTE#1,STNAME#2,ASSET#3,DEP#4,EQ#5,ROA#6,NIMY#7,NETINC#8,NCLNLS#9] parquet
+               +- Project [CERT#20L]
+                  +- Filter isnotnull(CERT#20L)
+                     +- Relation [CERT#20L,BKCLASS#21,ACTIVE#22L] parquet
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [STNAME#2 ASC NULLS FIRST, REPDTE#1 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(STNAME#2 ASC NULLS FIRST, REPDTE#1 ASC NULLS FIRST, 8), ENSURE_REQUIREMENTS, [plan_id=63]
+      +- HashAggregate(keys=[STNAME#2, REPDTE#1], functions=[count(CERT#0L), sum(ASSET#3), avg(ROA#6), avg(roa_lag1#74), avg(roa_roll_mean_4q#156), avg(roa_roll_std_4q#185), avg(eq_ratio#103), avg(asset_growth_4q#119)], output=[STNAME#2, REPDTE#1, n_banks#282L, total_asset#284, mean_roa#286, mean_roa_lag1#288, mean_roa_roll4#290, mean_roa_std4#292, mean_eq_ratio#294, mean_asset_growth4q#296])
+         +- Exchange hashpartitioning(STNAME#2, REPDTE#1, 8), ENSURE_REQUIREMENTS, [plan_id=60]
+            +- HashAggregate(keys=[STNAME#2, REPDTE#1], functions=[partial_count(CERT#0L), partial_sum(ASSET#3), partial_avg(ROA#6), partial_avg(roa_lag1#74), partial_avg(roa_roll_mean_4q#156), partial_avg(roa_roll_std_4q#185), partial_avg(eq_ratio#103), partial_avg(asset_growth_4q#119)], output=[STNAME#2, REPDTE#1, count#321L, sum#322, sum#323, count#324L, sum#325, count#326L, sum#327, count#328L, sum#329, count#330L, sum#331, count#332L, sum#333, count#334L])
+               +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, ROA#6, roa_lag1#74, (EQ#5 / ASSET#3) AS eq_ratio#103, ((ASSET#3 - asset_lag4#61) / asset_lag4#61) AS asset_growth_4q#119, CASE WHEN (_cnt_roa4#137L >= 2) THEN _we0#157 END AS roa_roll_mean_4q#156, CASE WHEN (_cnt_roa4#137L >= 2) THEN _we0#194 END AS roa_roll_std_4q#185]
+                  +- Window [lag(ASSET#3, -4, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -4, -4)) AS asset_lag4#61, lag(ROA#6, -1, null) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -1, -1)) AS roa_lag1#74, count(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _cnt_roa4#137L, avg(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#157, stddev_samp(ROA#6) windowspecdefinition(CERT#0L, REPDTE#1 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -3, currentrow$())) AS _we0#194], [CERT#0L], [REPDTE#1 ASC NULLS FIRST]
+                     +- Sort [CERT#0L ASC NULLS FIRST, REPDTE#1 ASC NULLS FIRST], false, 0
+                        +- Exchange hashpartitioning(CERT#0L, 8), ENSURE_REQUIREMENTS, [plan_id=54]
+                           +- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, EQ#5, ROA#6]
+                              +- BroadcastHashJoin [CERT#0L], [CERT#20L], LeftOuter, BuildRight, false
+                                 :- Project [CERT#0L, REPDTE#1, STNAME#2, ASSET#3, EQ#5, ROA#6]
+                                 :  +- Filter (((((isnotnull(ASSET#3) AND isnotnull(DEP#4)) AND isnotnull(REPDTE#1)) AND (ASSET#3 > 0.0)) AND (DEP#4 >= 0.0)) AND (REPDTE#1 >= 19900331))
+                                 :     +- FileScan parquet [CERT#0L,REPDTE#1,STNAME#2,ASSET#3,DEP#4,EQ#5,ROA#6] Batched: true, DataFilters: [isnotnull(ASSET#3), isnotnull(DEP#4), isnotnull(REPDTE#1), (ASSET#3 > 0.0), (DEP#4 >= 0.0), (REP..., Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/C:/Users/Admin/Desktop/Final_report/data_raw/scale_bench/fin_100..., PartitionFilters: [], PushedFilters: [IsNotNull(ASSET), IsNotNull(DEP), IsNotNull(REPDTE), GreaterThan(ASSET,0.0), GreaterThanOrEqual(..., ReadSchema: struct<CERT:bigint,REPDTE:string,STNAME:string,ASSET:double,DEP:double,EQ:double,ROA:double>
+                                 +- BroadcastExchange HashedRelationBroadcastMode(List(input[0, bigint, false]),false), [plan_id=50]
+                                    +- Filter isnotnull(CERT#20L)
+                                       +- FileScan parquet [CERT#20L] Batched: true, DataFilters: [isnotnull(CERT#20L)], Format: Parquet, Location: InMemoryFileIndex(1 paths)[file:/C:/Users/Admin/Desktop/Final_report/data_raw/scale_bench/inst_10..., PartitionFilters: [], PushedFilters: [IsNotNull(CERT)], ReadSchema: struct<CERT:bigint>
+
+
+
+3. INTERPRETATION OF SPARK EXECUTION PLAN & WHEN A CLUSTER IS JUSTIFIED
+--------------------------------------------------------------------------------
+• Parsed / Analyzed / Optimized Logical Plan:
+  Catalyst pushes the filter `(ASSET > 0 AND DEP >= 0 AND REPDTE >= '19900331')`
+  into the Parquet scan (`PushedFilters: [IsNotNull(ASSET), GreaterThan(ASSET,0.0), ...]`)
+  and prunes unused columns (`ReadSchema: struct<CERT:bigint,REPDTE:string,...>`).
+
+• Physical Plan Stages:
+  1. `FileScan parquet` + `Filter` + `Project`: Reads required columns and applies
+     pushed-down predicates on both `financials` and `institutions`.
+  2. `BroadcastHashJoin`: Because `institutions` is small (~24K rows), Spark
+     broadcasts it to all executors rather than shuffling the 1.68M-row panel.
+  3. `Exchange hashpartitioning(CERT, 8)` + `Sort [CERT ASC, REPDTE ASC]`:
+     Shuffles bank histories by `CERT` so each partition holds complete time
+     series for its subset of banks, enabling `Window` evaluation (`lag` and
+     `rowsBetween(-3, 0)`).
+  4. `HashAggregate (partial)` -> `Exchange hashpartitioning(STNAME, REPDTE, 8)`
+     -> `HashAggregate (final)` -> `Sort`: Performs partial aggregation locally
+     before shuffling state-quarter summaries for final aggregation.
+
+• When is a Spark Cluster Justified?
+  On the 100% FDIC Call Report panel (1.68M rows, ~130 MB in memory) and even at
+  10x scale (16.8M rows), Polars Lazy on a single laptop completes the entire
+  pipeline in ~0.2–2.5 seconds—faster than Spark's JVM startup and local shuffle
+  overhead. A multi-node Spark cluster becomes justified only when:
+    (i) Data volume exceeds single-node RAM (e.g., > 50–100 GB, such as daily
+        transaction-level or loan-level credit-registry panels with > 500M rows), OR
+    (ii) The pipeline must integrate directly with a distributed data lakehouse
+         (HDFS / S3 / Delta Lake) shared across many concurrent supervision jobs.
